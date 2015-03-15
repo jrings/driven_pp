@@ -1,7 +1,9 @@
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.cross_validation import cross_val_score
+import sys
 
 def prepare_data():
     labels = pd.read_csv("../train_labels.csv")
@@ -13,10 +15,18 @@ def prepare_data():
 
     combined = pd.concat((train, test))
 
-    #Expand categories and impute missing numerical values
-    combined = pd.get_dummies(combined)
+    #Drop columns with less than 5% coverage
+    for col in combined.columns:
+        if combined[col].isnull().sum()/combined.shape[0] >= 0.95:
+            _ = combined.pop(col)
+
+    #Expand ordinals and categories and impute missing numerical values
+    combined = pd.get_dummies(
+        combined, columns=[col for col in combined.columns if col.startswith("o_")
+                           or col.startswith("c_") or col=="release"], dummy_na=True)
     for col in combined:
         if col.startswith("n_"):
+            combined[col + "_nan"] = [1 if np.isnan(x) else 0 for x in combined[col]]
             filler = np.nanmean(combined[col])
             combined[col].fillna(filler, inplace=True)
 
@@ -24,12 +34,16 @@ def prepare_data():
     train = combined.iloc[:len(ids)]
     test = combined.iloc[len(ids):]
 
+    print(train.shape)
     return train, test, labels, ids, test_ids
 
 def main():
     train, test, labels, ids, test_ids = prepare_data()
-    model = LogisticRegression()
-    print(np.mean(cross_val_score(np.array(train), np.array(labels["service_a"]),
+    model = ExtraTreesClassifier(
+        n_estimators=400, min_samples_split=7, max_features="log2", random_state=0)
+    X = np.array(train)
+    y = np.array(labels["service_a"].tolist())
+    print(np.mean(cross_val_score(model, X, y, verbose=True,
                               cv=4, n_jobs=2, scoring="accuracy")))
     
 
