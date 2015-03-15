@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, RandomizedLasso
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.cross_validation import cross_val_score
 import sys
@@ -42,6 +42,7 @@ def main():
     model = ExtraTreesClassifier(
         n_estimators=400, min_samples_split=7, max_features="log2", random_state=0,
         n_jobs=4)
+    lasso = RandomizedLasso(n_jobs=4, random_state=0)
     X = np.array(train)
     X_test = np.array(test)
     print(X_test.shape)
@@ -51,8 +52,11 @@ def main():
             continue
         print(col)
         y = np.array(labels[col].tolist())
-        model.fit(X, y)
-        pred[col] = model.predict_proba(X_test)[:, 1].ravel()
+        X_t = lasso.fit_transform(X, y)
+        X_test_t = lasso.transform(X_test)
+        print(np.array(X_t.columns)[lasso.get_support()])
+        model.fit(X_t, y)
+        pred[col] = model.predict_proba(X_test_t)[:, 1].ravel()
     P = pd.DataFrame(pred)
     P["id"] = test_ids
     P = P[sorted(P.columns)]
