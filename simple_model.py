@@ -7,8 +7,8 @@ import sys
 
 def prepare_data():
     labels = pd.read_csv("../train_labels.csv")
-    train = pd.read_csv("../train_values.csv")
-    test = pd.read_csv("../test_values.csv")
+    train = pd.read_csv("../train_values.csv", low_memory=False)
+    test = pd.read_csv("../test_values.csv", low_memory=False)
 
     ids = train.pop("id")
     test_ids = test.pop("id")
@@ -40,11 +40,25 @@ def prepare_data():
 def main():
     train, test, labels, ids, test_ids = prepare_data()
     model = ExtraTreesClassifier(
-        n_estimators=400, min_samples_split=7, max_features="log2", random_state=0)
+        n_estimators=400, min_samples_split=7, max_features="log2", random_state=0,
+        n_jobs=4)
     X = np.array(train)
-    y = np.array(labels["service_a"].tolist())
-    print(np.mean(cross_val_score(model, X, y, verbose=True,
-                              cv=4, n_jobs=2, scoring="accuracy")))
+    X_test = np.array(test)
+    print(X_test.shape)
+    pred = {}
+    for col in labels.columns:
+        if col == "id":
+            continue
+        print(col)
+        y = np.array(labels[col].tolist())
+        model.fit(X, y)
+        pred[col] = model.predict_proba(X_test)[:, 1].ravel()
+    P = pd.DataFrame(pred)
+    P["id"] = test_ids
+    P = P[sorted(P.columns)]
+    P.to_csv("submit.csv", index=False)
+#    print(np.mean(cross_val_score(model, X, y, verbose=True,
+#                              cv=4, scoring="accuracy")))
     
 
     
