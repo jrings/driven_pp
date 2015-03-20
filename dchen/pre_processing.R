@@ -53,9 +53,9 @@ test_x <- test_x[,dimnames(combined_x)[[2]]]
 #preprocessing with PCA 
 combinedPreProc <- preProcess(combined_x, method = 'pca')
 #predict training
-train_x <- predict(combinedPreProc,train_x)
+pca_train_x <- predict(combinedPreProc,train_x)
 #predict test 
-test_x <- predict(combinedPreProc,test_x)
+pca_test_x <- predict(combinedPreProc,test_x)
 
 #process DVs and create separate vectors for each of them 
 train_dvs <- names(labels)
