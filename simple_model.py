@@ -42,7 +42,7 @@ def main():
     model = ExtraTreesClassifier(
         n_estimators=400, min_samples_split=7, max_features="log2", random_state=0,
         n_jobs=4)
-    lasso = RandomizedLasso(n_jobs=4, random_state=0)
+    lasso = RandomizedLasso(random_state=0, verbose=True, n_resampling=25)
     X = np.array(train)
     X_test = np.array(test)
     print(X_test.shape)
@@ -53,6 +53,7 @@ def main():
         print(col)
         y = np.array(labels[col].tolist())
         X_t = lasso.fit_transform(X, y)
+        print(X_t.shape)
         X_test_t = lasso.transform(X_test)
         print(np.array(X_t.columns)[lasso.get_support()])
         model.fit(X_t, y)
