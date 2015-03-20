@@ -1,4 +1,5 @@
 from modshogun import RealFeatures, MultilabelSOLabels, MultilabelModel
+from modshogun import StochasticSOSVM, DualLibQPBMSOSVM, StructuredAccuracy, LabelsFactory
 
 import os
 import inspect
@@ -27,6 +28,12 @@ def main():
     train_features = RealFeatures(np.c_[np.array(train), np.ones(train.shape[0])].T)
     test_features = RealFeatures(np.c_[np.array(train), np.ones(train.shape[0])].T)
         
+    model = MultilabelModel(train_features, labels_so)
+
+    sgd = StochasticSOSVM(model, labels_so)
+
+    sgd.train()
+
     
 
 if __name__ == "__main__":
