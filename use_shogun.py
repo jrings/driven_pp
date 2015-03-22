@@ -29,7 +29,7 @@ def main():
 
     # Build train object
     train_features = RealFeatures(np.c_[np.array(train), np.ones(train.shape[0])].T)
-    test_features = RealFeatures(np.c_[np.array(train), np.ones(train.shape[0])].T)
+    test_features = RealFeatures(np.c_[np.array(test), np.ones(test.shape[0])].T)
         
     model = MultilabelModel(train_features, labels_so)
 
@@ -37,7 +37,19 @@ def main():
 
     sgd.train()
 
-    pickle.dump(sgd, open("sgd.pkl"))
+    m_test = sgd.apply(test_features)
+    tuples = []
+    for i in range(m_test.get_num_labels()):
+        label = SparseMultilabel_obtain_from_generic(m_test.get_label(i)).get_data()
+        letters = "abcdefghijklmn"
+        tuples.append({"service_{}".format(letters[j]): 1 if j in label else 0 for j in range(14)})
+    df = pd.DataFrame(tuples)
+    df["id"] = test_ids
+    df = df[sorted(df.columns.tolist())]
+    df.to_csv("submit-sgd.csv", index=False)
+
+
+    pickle.dump(sgd, open("sgd.pkl", "wb"))
     
 
 if __name__ == "__main__":
