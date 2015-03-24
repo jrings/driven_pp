@@ -68,4 +68,7 @@ P <- predict(model, test_x, scores=T)
 Q <- P - min(P)
 Q <- Q / max(Q)
 
+pred <- data.frame(Q)
+row.names(pred) <- row.names(test)
+write.csv(pred, file="submit-ferns.csv", quote=F)
 
