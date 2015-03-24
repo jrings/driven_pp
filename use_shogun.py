@@ -1,4 +1,5 @@
 from modshogun import RealFeatures, MultilabelSOLabels, MultilabelModel
+from modshogun import StochasticSOSVM, DualLibQPBMSOSVM, StructuredAccuracy, LabelsFactory
 
 import numpy as np
 import pandas as pd
