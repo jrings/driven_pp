@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression, RandomizedLasso
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
+from sklearn.grid_search import GridSearchCV
 from sklearn.cross_validation import cross_val_score
 from sklearn.multiclass import OneVsRestClassifier
 import sys
@@ -41,25 +42,26 @@ def prepare_data():
 def main():
     train, test, labels, ids, test_ids = prepare_data()
     model = GradientBoostingClassifier(
-        n_estimators=800, min_samples_split=7, max_features="log2", random_state=0, 
+        n_estimators=400, min_samples_split=7, max_features="log2", random_state=0, 
         )
     
-    multi = OneVsRestClassifier(model)
+    gscv = GridSearchCV(model, n_jobs=8, param_grid={"min_samples_split": [3,7,11],
+                                                      "max_depth": [3,5, None],
+                                                      "max_features": ["log2", "sqrt", None]},
+                        scoring="log_loss", verbose=2)
     X = np.array(train)
     X_test = np.array(test)
     print(X_test.shape)
-    Y = np.array(labels)[:, 1:]
-    print(Y.shape)
-    print(np.mean(cross_val_score(model, X, Y, verbose=True, n_jobs=4,
-                              cv=4, scoring="roc_auc")))
-
-    multi.fit(X, Y)
-    preds = multi.predict_proba(X_test)
-
-    P = pd.DataFrame({"service_{}".format(letter): preds[:, i] for i, letter in enumerate("abcdefghijklmn")})
+    preds = {}
+    for i, col in enumerate("abcdefghijklmn"):
+        y = np.array(labels["service_{}".format(col)])
+        gscv.fit(X, y)
+        preds[col] = gscv.predict_proba(X_test)
+        print(col, gscv.best_params_, gscv.best_score_)
+    P = pd.DataFrame({"service_{}".format(letter): arr for col, arr in preds.items()})
     P["id"] = test_ids
     P = P[sorted(P.columns)]
-    P.to_csv("submit_multi.csv", index=False)
+    P.to_csv("submit_gscv.csv", index=False)
 
 
     
