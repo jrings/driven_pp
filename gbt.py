@@ -7,6 +7,21 @@ from sklearn.cross_validation import cross_val_score
 from sklearn.multiclass import OneVsRestClassifier
 import sys
 
+grid_param = "a":{'max_depth': 5, 'max_features': 'sqrt', 'min_samples_split': 7}, 
+"b":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 7}, 
+"c":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 3}, 
+"d":{'max_depth': 3, 'max_features': 'log2', 'min_samples_split': 11},
+"e":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 11},
+"f":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 11},
+"g":{'max_depth': 3, 'max_features': 'log2', 'min_samples_split': 7}, 
+"h":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 3}, 
+"i":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 11},
+"j":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 11},
+"k":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 11},
+"l":{'max_depth': 5, 'max_features': 'sqrt', 'min_samples_split': 7}, 
+"m":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 11},
+"n":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 3}} 
+
 def prepare_data():
     labels = pd.read_csv("../train_labels.csv")
     train = pd.read_csv("../train_values.csv", low_memory=False)
@@ -45,23 +60,23 @@ def main():
         n_estimators=400, min_samples_split=7, max_features="log2", random_state=0, 
         )
     
-    gscv = GridSearchCV(model, n_jobs=8, param_grid={"min_samples_split": [3,7,11],
-                                                      "max_depth": [3,5, 7, 9],
-                                                      "max_features": ["log2", "sqrt"]},
-                        scoring="log_loss", verbose=1)
     X = np.array(train)
     X_test = np.array(test)
     print(X_test.shape)
     preds = {}
     for i, col in enumerate("abcdefghijklmn"):
+        model = GradientBoostingClassifier(
+            n_estimators=400, min_samples_split=7, max_features="log2", random_state=0, **grid_param[col]
+        )
+
         y = np.array(labels["service_{}".format(col)])
-        gscv.fit(X, y)
-        preds[col] = gscv.predict_proba(X_test)
-        print(col, gscv.best_params_, gscv.best_score_)
-    P = pd.DataFrame({"service_{}".format(letter): arr for col, arr in preds.items()})
+        model.fit(X, y)
+        preds[col] = model.predict_proba(X_test)
+        print("{} finished".format(col))
+    P = pd.DataFrame({"service_{}".format(col): arr for col, arr in preds.items()})
     P["id"] = test_ids
     P = P[sorted(P.columns)]
-    P.to_csv("submit_gscv.csv", index=False)
+    P.to_csv("submit_gbt.csv", index=False)
 
 
     
