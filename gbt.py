@@ -7,7 +7,7 @@ from sklearn.cross_validation import cross_val_score
 from sklearn.multiclass import OneVsRestClassifier
 import sys
 
-grid_param = "a":{'max_depth': 5, 'max_features': 'sqrt', 'min_samples_split': 7}, 
+grid_param = {"a":{'max_depth': 5, 'max_features': 'sqrt', 'min_samples_split': 7}, 
 "b":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 7}, 
 "c":{'max_depth': 3, 'max_features': 'sqrt', 'min_samples_split': 3}, 
 "d":{'max_depth': 3, 'max_features': 'log2', 'min_samples_split': 11},
@@ -57,7 +57,7 @@ def prepare_data():
 def main():
     train, test, labels, ids, test_ids = prepare_data()
     model = GradientBoostingClassifier(
-        n_estimators=400, min_samples_split=7, max_features="log2", random_state=0, 
+        n_estimators=400, random_state=0, 
         )
     
     X = np.array(train)
@@ -66,13 +66,13 @@ def main():
     preds = {}
     for i, col in enumerate("abcdefghijklmn"):
         model = GradientBoostingClassifier(
-            n_estimators=400, min_samples_split=7, max_features="log2", random_state=0, **grid_param[col]
+            n_estimators=400, random_state=0, **grid_param[col]
         )
 
         y = np.array(labels["service_{}".format(col)])
         model.fit(X, y)
-        preds[col] = model.predict_proba(X_test)
-        print("{} finished".format(col))
+        preds[col] = model.predict_proba(X_test)[:, 1]
+        print("{} finished {}".format(col, preds[col].shape))
     P = pd.DataFrame({"service_{}".format(col): arr for col, arr in preds.items()})
     P["id"] = test_ids
     P = P[sorted(P.columns)]
