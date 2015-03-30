@@ -67,7 +67,7 @@ def main():
         )
 
         y = np.array(labels["service_{}".format(col)])
-        cvs[col] = np.mean(cross_val_score(model, X, y, n_jobs=4))
+        cvs[col] = np.mean(cross_val_score(model, X, y, n_jobs=4, scoring="log_loss"))
         print("{} finished with {}".format(col, cvs[col]))
     print("Overall: {}".format(np.mean(list(cvs.values()))))
 
