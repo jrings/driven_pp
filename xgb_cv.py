@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression, RandomizedLasso
 from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
-from sklearn.grid_search import GridSearchCV, KFold
-from sklearn.cross_validation import cross_val_score
+from sklearn.grid_search import GridSearchCV
+from sklearn.cross_validation import cross_val_score, KFold
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import log_loss
 import xgboost as xgb
@@ -48,21 +48,23 @@ def main():
     X = np.array(train)
     X_test = np.array(test)
 
-    param = {'max_depth':2, 'eta':1, 'silent':1, 'objective':'binary:logistic', 'metric': 'logloss' }
+    param = {'max_depth': 3, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic', 
+             'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
     cvs = {}
     for i, col in enumerate("abcdefghijklmn"):
+        print("service_{}".format(col))
         y = np.array(labels["service_{}".format(col)])
-        watchlist  = [(dtrain,'train')]
+
         num_round = 100
 
         cross_values = []
         for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):
             dtrain = xgb.DMatrix(X[train_idx, :], label=y[train_idx])
             dtest = xgb.DMatrix(X[test_idx, :])
-            bst = xgb.train(param, dtrain, num_round, watchlist)
+            bst = xgb.train(param, dtrain, num_round)
             preds = bst.predict(dtest)
             
-            cross_values.append(log_loss(y[test_idx], preds)
+            cross_values.append(log_loss(y[test_idx], preds))
         cvs[col] = np.mean(cross_values)
         print("{} finished with {}".format(col, cvs[col]))
                     
