@@ -47,12 +47,12 @@ def main():
     
     X = np.array(train)
     X_test = np.array(test)
-    param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
+    param = {'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
 
-    max_depths =  [2, 3, 5, 7, 11]
-    etas =  [0.1, 0.2, 0.5, 0.75]
-    nrounds = [25, 50, 100, 150, 200]
+    max_depths =  [2, 3, 5, 7]
+    etas =  [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.5]
+    nrounds = [25, 50, 75, 100]
 
     best_params = {}
     # here comes the super-nested if. Don't do this at home!
@@ -65,7 +65,7 @@ def main():
                 
                     param.update({"max_depth": m_depth, "eta": eta})
 
-                    print("service_{} {}".format(col, key))
+                    print("service_{} {}".format(col, key), end = "")
                     y = np.array(labels["service_{}".format(col)])
 
                     cvs = []
@@ -74,10 +74,13 @@ def main():
                         dtest = xgb.DMatrix(X[test_idx, :])
                         bst = xgb.train(param, dtrain, n_round)
                         preds = bst.predict(dtest)
-            
+                        
                         cvs.append(log_loss(y[test_idx], preds))
-                    all_preds[key] = np.mean(cvs)
-        best_params[col] = sorted(all_preds.items(), key = lambda x: x[1], reverse=True)[0]
+                    n = np.mean(cvs)
+                    if not np.isnan(n):
+                        all_preds[key] = np.mean(cvs)
+                    print(all_preds[key])
+        best_params[col] = sorted(all_preds.items(), key = lambda x: x[1])[0]
         print(col, best_params[col])
     import pickle
     pickle.dump(best_params, open("best_params.pkl", 'wb'))
