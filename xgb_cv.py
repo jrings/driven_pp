@@ -48,14 +48,14 @@ def main():
     X = np.array(train)
     X_test = np.array(test)
 
-    param = {'max_depth': 3, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic', 
+    param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic', 
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
     cvs = {}
     for i, col in enumerate("abcdefghijklmn"):
         print("service_{}".format(col))
         y = np.array(labels["service_{}".format(col)])
 
-        num_round = 100
+        num_round = 80
 
         cross_values = []
         for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):

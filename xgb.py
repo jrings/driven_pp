@@ -47,9 +47,9 @@ def main():
     
     X = np.array(train)
     X_test = np.array(test)
-
-    param = {'max_depth': 3, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic', 
+    param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
+
     all_preds = {}
     for i, col in enumerate("abcdefghijklmn"):
         print("service_{}".format(col))
