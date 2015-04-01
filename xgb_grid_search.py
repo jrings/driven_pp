@@ -50,7 +50,7 @@ def main():
     param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
 
-    max_depth =  [2, 3, 5, 7, 11]
+    max_depths =  [2, 3, 5, 7, 11]
     etas =  [0.1, 0.2, 0.5, 0.75]
     nrounds = [25, 50, 100, 150, 200]
 
