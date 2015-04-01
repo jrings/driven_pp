@@ -50,25 +50,41 @@ def main():
     param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
 
-    all_preds = {}
+    max_depth =  [2, 3, 5, 7, 11]
+    etas =  [0.1, 0.2, 0.5, 0.75]
+    nrounds = [25, 50, 100, 150, 200]
+
+    best_params = {}
+    # here comes the super-nested if. Don't do this at home!
     for i, col in enumerate("abcdefghijklmn"):
-        print("service_{}".format(col))
-        y = np.array(labels["service_{}".format(col)])
+        all_preds = {}
+        for n_round in nrounds:
+            for m_depth in max_depths:
+                for eta in etas:
+                    key = (n_round, m_depth, eta)
+                
+                    param.update({"max_depth": m_depth, "eta": eta})
 
-        num_round = 100
+                    print("service_{} {}".format(col, key))
+                    y = np.array(labels["service_{}".format(col)])
 
-
-        dtrain = xgb.DMatrix(X, label=y)
-        dtest = xgb.DMatrix(X_test)
-        bst = xgb.train(param, dtrain, num_round)
-        preds = bst.predict(dtest)
+                    cvs = []
+                    for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):
+                        dtrain = xgb.DMatrix(X[train_idx, :], label=y[train_idx])
+                        dtest = xgb.DMatrix(X[test_idx, :])
+                        bst = xgb.train(param, dtrain, n_round)
+                        preds = bst.predict(dtest)
             
-        all_preds[col] = preds
+                        cvs.append(log_loss(y[test_idx], preds))
+                    all_preds[key] = np.mean(cvs)
+        best_params[col] = sorted(all_preds.items(), key = lambda x: x[1], reverse=True)[0]
+        print(col, best_params[col])
+    import pickle
+    pickle.dump(best_params, open("best_params.pkl", 'wb'))
 
-    P = pd.DataFrame({"service_{}".format(col): arr for col, arr in all_preds.items()})
-    P["id"] = test_ids
-    P = P[sorted(P.columns)]
-    P.to_csv("submit_xgb.csv", index=False)
+
+
+
     
 if __name__ == "__main__":
     main()
