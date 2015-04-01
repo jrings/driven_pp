@@ -51,8 +51,8 @@ def main():
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
 
     max_depths =  [2, 3, 5, 7, 11]
-    etas =  [0.1, 0.2, 0.5, 0.75]
-    nrounds = [25, 50, 100, 150, 200]
+    etas =  [0.05, 0.1, 0.2, 0.35, 0.5, 0.75]
+    nrounds = [15, 25, 50, 100, 150, 200, 300]
 
     best_params = {}
     # here comes the super-nested if. Don't do this at home!
@@ -65,7 +65,7 @@ def main():
                 
                     param.update({"max_depth": m_depth, "eta": eta})
 
-                    print("service_{} {}".format(col, key))
+                    print("service_{} {}".format(col, key),)
                     y = np.array(labels["service_{}".format(col)])
 
                     cvs = []
@@ -77,6 +77,7 @@ def main():
             
                         cvs.append(log_loss(y[test_idx], preds))
                     all_preds[key] = np.mean(cvs)
+                    print(all_preds[key])
         best_params[col] = sorted(all_preds.items(), key = lambda x: x[1], reverse=True)[0]
         print(col, best_params[col])
     import pickle
