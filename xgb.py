@@ -7,6 +7,7 @@ from sklearn.cross_validation import cross_val_score, KFold
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import log_loss
 import xgboost as xgb
+import pickle
 import sys
 
 
@@ -49,15 +50,14 @@ def main():
     X_test = np.array(test)
     param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
-
+    best = pickle.load(open("best_params.pkl", "rb"))
     all_preds = {}
     for i, col in enumerate("abcdefghijklmn"):
-        print("service_{}".format(col))
+        ((num_round, md, eta), _) = best[col]
+        param.update({"max_depth": md, "eta": eta})
+        
+        print("service_{}: {}".format(col, param))
         y = np.array(labels["service_{}".format(col)])
-
-        num_round = 100
-
-
         dtrain = xgb.DMatrix(X, label=y)
         dtest = xgb.DMatrix(X_test)
         bst = xgb.train(param, dtrain, num_round)
@@ -68,7 +68,7 @@ def main():
     P = pd.DataFrame({"service_{}".format(col): arr for col, arr in all_preds.items()})
     P["id"] = test_ids
     P = P[sorted(P.columns)]
-    P.to_csv("submit_xgb.csv", index=False)
+    P.to_csv("submit_xgb_gridded.csv", index=False)
     
 if __name__ == "__main__":
     main()
