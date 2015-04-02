@@ -1,3 +1,4 @@
+import pickle
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression, RandomizedLasso
@@ -26,15 +27,17 @@ def prepare_data():
             _ = combined.pop(col)
 
     #Expand ordinals and categories and impute missing numerical values
+    dummify_cols = ["release"] + [col for col in combined.columns if col.startswith("_o")
+                                  or col.startswith("c_")]
+
     combined = pd.get_dummies(
-        combined, columns=[col for col in combined.columns if col.startswith("o_")
-                           or col.startswith("c_") or col=="release"], dummy_na=True)
+        combined, columns=dummify_cols, dummy_na=True)
     for col in combined:
-        if col.startswith("n_"):
+        if col not in dummify_cols:
             combined[col + "_nan"] = [1 if np.isnan(x) else 0 for x in combined[col]]
             filler = np.nanmean(combined[col])
             combined[col].fillna(filler, inplace=True)
-
+            
     #Split up again
     train = combined.iloc[:len(ids)]
     test = combined.iloc[len(ids):]
@@ -50,12 +53,14 @@ def main():
 
     param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic', 
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
+    best = pickle.load(open("best_params.pkl", "rb"))
+    all_preds = {}
     cvs = {}
     for i, col in enumerate("abcdefghijklmn"):
-        print("service_{}".format(col))
+        ((num_round, md, eta), _) = best[col]
+        param.update({"max_depth": md, "eta": eta})
+        print("service_{}: {} {} rounds".format(col, param, num_round))
         y = np.array(labels["service_{}".format(col)])
-
-        num_round = 80
 
         cross_values = []
         for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):
