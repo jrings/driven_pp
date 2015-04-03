@@ -32,22 +32,33 @@ def prepare_data():
     combined = pd.get_dummies(
         combined, columns=[col for col in combined.columns if col.startswith("o_")
                            or col.startswith("c_") or col=="release"], dummy_na=True)
+
     for col in combined:
         if col.startswith("n_"):
             combined[col + "_nan"] = [1 if np.isnan(x) else 0 for x in combined[col]]
             filler = np.nanmean(combined[col])
             combined[col].fillna(filler, inplace=True)
 
+    # Add the interaction terms                                                                                                                                                        
     for col_a, col_b in interactions:
         col_a = col_a.strip()
         col_b = col_b.strip().replace(",", "")
-        if col_a not in combined.columns.tolist():
-            print("xxx{}xxx".format(col_a), len(col_a), "not in combined columns")
-            continue
-        if col_b not in combined.columns.tolist():
-            print("xxx{}xxx".format(col_b), len(col_b), "not in combined columns")
-            continue
-        combined["{}_x_{}".format(col_a, col_b)] = [a*b for a, b in zip(combined[col_a], combined[col_b])]
+
+        if col_a.startswith("o_"):
+            for col in combined.columns:
+                if not col.startswith(col_a):
+                    continue
+                else:
+                    combined["{}_x_{}".format(col, col_b)] = [a*b for a, b in zip(combined[col], combined[col_b])]
+        if col_b.startswith("o_"):
+            for col in combined.columns:
+                if not col.startswith(col_b):
+                    continue
+                else:
+                    combined["{}_x_{}".format(col_a, col)] = [a*b for a, b in zip(combined[col_a], combined[col])]
+        if not col_a.startswith("o_") and not col_b.startswith("o_"):
+            combined["{}_x_{}".format(col_a, col_b)] = [a*b for a, b in zip(combined[col_a], combined[col_b])]
+
 
     #Split up again
     train = combined.iloc[:len(ids)]
@@ -65,7 +76,7 @@ def main():
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
 
     max_depths =  [3, 5, 7]
-    etas =  [0.025, 0.05, 0.075, 0.1, 0.125, 0.15, 0.175, 0.2]
+    etas =  [0.025, 0.05, 0.067, 0.088, 0.1, 0.125, 0.15, 0.175, 0.2]
     nrounds = [75, 87, 100, 120]
 
     best_params = {}
