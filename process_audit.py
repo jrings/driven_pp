@@ -31,4 +31,4 @@ col_lk = {i+1: df.columns.tolist()[i] for i in range(df.shape[1]-1)}
 
 aud = {(col_lk[x[0]], col_lk[x[1]]): v for x, v in audit.items() if col_lk[x[0]] not in not_covered and col_lk[x[1]] not in not_covered}
 
-print(["{}||{}".format(k[0][0], k[0][1]) for k in sorted(aud.items(), key = lambda x: x[1])[-250:]])
+print(["{}||{}".format(k[0][0], k[0][1]) for k in sorted(aud.items(), key = lambda x: x[1])[-500:]])
