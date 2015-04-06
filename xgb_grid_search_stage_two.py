@@ -8,7 +8,7 @@ from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import log_loss
 import xgboost as xgb
 import sys
-
+import pickle
 
 def prepare_data():
     labels = pd.read_csv("../train_labels.csv")
@@ -77,16 +77,16 @@ def main():
 
     best = pickle.load(open("best_params_quad.pkl", "rb"))
 
-    min_childs = [0.5, 0.75, 1, 1.25]
+    min_childs = [0.6, 0.75, 1, 1.25]
     subsamples = [.5, .75, 1]
-    colsamples = [.7, .85, 1]
+    colsamples = [.5, .6, .75, 1]
 
     best_params = {}
     # here comes the super-nested if. Don't do this at home!
     for i, col in enumerate("abcdefghijklmn"):
         all_preds = {}
         
-        ((num_round, md, eta), _) = best[col]
+        ((n_round, md, eta), _) = best[col]
         param.update({"max_depth": md, "eta": eta})
 
         for mc in min_childs:
@@ -114,7 +114,7 @@ def main():
                     print(all_preds[key])
         best_params[col] = sorted(all_preds.items(), key = lambda x: x[1])[0]
         print(col, best_params[col])
-    import pickle
+
     pickle.dump(best_params, open("best_params_stage_two.pkl", 'wb'))
 
 
