@@ -18,7 +18,7 @@ def prepare_data():
     test = pd.read_csv("../test_values.csv", low_memory=False)
 
     interactions = open("quadrats.txt").readline().strip()[1:-1].split()
-    interactions = [x.replace("'", "").split("||") for x in interactions]
+    interactions = [x.replace("'", "").split("||") for x in interactions][:100]
 
     ids = train.pop("id")
     test_ids = test.pop("id")
@@ -66,7 +66,7 @@ def main():
     X_test = np.array(test)
     param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
-    best = pickle.load(open("best_params.pkl", "rb"))
+    best = pickle.load(open("best_params_quad.pkl", "rb"))
     all_preds = {}
     for i, col in enumerate("abcdefghijklmn"):
         ((num_round, md, eta), _) = best[col]
@@ -84,7 +84,7 @@ def main():
     P = pd.DataFrame({"service_{}".format(col): arr for col, arr in all_preds.items()})
     P["id"] = test_ids
     P = P[sorted(P.columns)]
-    P.to_csv("submit_xgb_quad.csv", index=False)
+    P.to_csv("submit_xgb_quad_100_cv.csv", index=False)
     
 if __name__ == "__main__":
     main()
