@@ -27,7 +27,7 @@ def prepare_data():
     bc_cols = []  # Add numerical columns with at least 75% coverage for Box-Cox transformation
     #Drop columns with less than 5% coverage
     for col in combined.columns:
-        if combined[col].isnull().sum()/combined.shape[0] >= 0.75 and col.startswith("n"):
+        if combined[col].isnull().sum()/combined.shape[0] <= 0.25 and col.startswith("n"):
             bc_cols.append(col)
         if combined[col].isnull().sum()/combined.shape[0] >= 0.95:
             _ = combined.pop(col)
@@ -58,6 +58,9 @@ def prepare_data():
             
     #Box-Cox transform numerical columns with good coverage
     for col in bc_cols:
+        if min(combined[cols]) <= 0:
+            continue
+        print("Boxing and coxing {}".format(col))
         combined[col] = boxcox(np.array(combined[col]))
 
     #Split up again
