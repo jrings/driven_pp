@@ -1,4 +1,4 @@
-import pickle
+#import pickle
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression, RandomizedLasso
@@ -8,9 +8,8 @@ from sklearn.cross_validation import cross_val_score, KFold
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import log_loss
 import xgboost as xgb
-import pickle
 import sys
-
+from scipy.stats import boxcox
 
 def prepare_data():
     labels = pd.read_csv("../train_labels.csv")
@@ -25,21 +24,26 @@ def prepare_data():
 
     combined = pd.concat((train, test))
 
+    bc_cols = []  # Add numerical columns with at least 75% coverage for Box-Cox transformation
     #Drop columns with less than 5% coverage
     for col in combined.columns:
+        if combined[col].isnull().sum()/combined.shape[0] >= 0.75 and col.startswith("n"):
+            bc_cols.append(col)
         if combined[col].isnull().sum()/combined.shape[0] >= 0.95:
             _ = combined.pop(col)
 
     #Expand ordinals and categories and impute missing numerical values
+    dummify_cols = ["release"] + [col for col in combined.columns if col.startswith("_o")
+                                  or col.startswith("c_")]
+
     combined = pd.get_dummies(
-        combined, columns=[col for col in combined.columns if col.startswith("o_")
-                           or col.startswith("c_") or col=="release"], dummy_na=True)
+        combined, columns=dummify_cols, dummy_na=True)
+    
     for col in combined:
-        if col.startswith("n_"):
+        if col not in dummify_cols:
             combined[col + "_nan"] = [1 if np.isnan(x) else 0 for x in combined[col]]
             filler = np.nanmean(combined[col])
             combined[col].fillna(filler, inplace=True)
-
 
     for col_a, col_b in interactions:
         col_a = col_a.strip()
@@ -51,6 +55,10 @@ def prepare_data():
             print("xxx{}xxx".format(col_b), len(col_b), "not in combined columns")
             continue
         combined["{}_x_{}".format(col_a, col_b)] = [a*b for a, b in zip(combined[col_a], combined[col_b])]
+            
+    #Box-Cox transform numerical columns with good coverage
+    for col in bc_cols:
+        combined[col] = boxcox(np.array(combined[col]))
 
     #Split up again
     train = combined.iloc[:len(ids)]
@@ -64,33 +72,32 @@ def main():
     
     X = np.array(train)
     X_test = np.array(test)
-    param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
+
+    param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic', 
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
     best = pickle.load(open("best_params_quad.pkl", "rb"))
-    two = pickle.load(open("best_params_stage_two.pkl", "rb"))
-
     all_preds = {}
+    cvs = {}
     for i, col in enumerate("abcdefghijklmn"):
         ((num_round, md, eta), _) = best[col]
         param.update({"max_depth": md, "eta": eta})
-        ((mc, ss, cs), _) = two[col]
-
-        param.update({"min_child_weight": mc, "subsample": ss,
-                      "colsample_bytree": cs})
-
-        print("service_{}: {}".format(col, param))
+        print("service_{}: {} {} rounds".format(col, param, num_round))
         y = np.array(labels["service_{}".format(col)])
-        dtrain = xgb.DMatrix(X, label=y)
-        dtest = xgb.DMatrix(X_test)
-        bst = xgb.train(param, dtrain, num_round)
-        preds = bst.predict(dtest)
-            
-        all_preds[col] = preds
 
-    P = pd.DataFrame({"service_{}".format(col): arr for col, arr in all_preds.items()})
-    P["id"] = test_ids
-    P = P[sorted(P.columns)]
-    P.to_csv("submit_xgb_quad_100_two.csv", index=False)
+        cross_values = []
+        for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):
+            dtrain = xgb.DMatrix(X[train_idx, :], label=y[train_idx])
+            dtest = xgb.DMatrix(X[test_idx, :])
+            bst = xgb.train(param, dtrain, num_round)
+            preds = bst.predict(dtest)
+            
+            cross_values.append(log_loss(y[test_idx], preds))
+        cvs[col] = np.mean(cross_values)
+        print("{} finished with {}".format(col, cvs[col]))
+                    
+    print("Overall: {}".format(np.mean(list(cvs.values()))))
+
+
     
 if __name__ == "__main__":
     main()
