@@ -57,18 +57,6 @@ def prepare_data():
             continue
         combined["{}_x_{}".format(col_a, col_b)] = [a*b for a, b in zip(combined[col_a], combined[col_b])]
             
-    #Box-Cox transform numerical columns with good coverage
-    for col in bc_cols:
-        if min(combined[col]) <= 0:
-            combined[col] -= min(combined[col])
-            combined[col] += 0.01
-        print("Boxing and coxing {}".format(col))
-        values = np.array(combined[col])
-        print(values.shape, "SHAPE")
-        bc = boxcox(values)[0]
-        print(bc, combined.shape)
-        combined[col] = bc
-
     #Split up again
     train = combined.iloc[:len(ids)]
     test = combined.iloc[len(ids):]
@@ -87,24 +75,36 @@ def main():
     best = pickle.load(open("best_params_quad.pkl", "rb"))
     all_preds = {}
     cvs = {}
-    for i, col in enumerate("abcdefghijklmn"):
-        ((num_round, md, eta), _) = best[col]
-        param.update({"max_depth": md, "eta": eta})
-        print("service_{}: {} {} rounds".format(col, param, num_round))
-        y = np.array(labels["service_{}".format(col)])
 
-        cross_values = []
-        for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):
+    for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):
+
+        preds = {}
+        preds_t = {}
+        for i, col in enumerate("abcdefghijklmn"):
+            ((num_round, md, eta), _) = best[col]
+            param.update({"max_depth": md, "eta": eta})
+            print("service_{}: {} {} rounds".format(col, param, num_round))
+            y = np.array(labels["service_{}".format(col)])
+
             dtrain = xgb.DMatrix(X[train_idx, :], label=y[train_idx])
             dtest = xgb.DMatrix(X[test_idx, :])
             bst = xgb.train(param, dtrain, num_round)
-            preds = bst.predict(dtest)
-            
-            cross_values.append(log_loss(y[test_idx], preds))
-        cvs[col] = np.mean(cross_values)
-        print("{} finished with {}".format(col, cvs[col]))
+            preds[col] = bst.predict(dtrain)
+            preds_t[col] = bst.predict(dtest)
+
+        P = np.c_[[preds[col] for col in "abcdefghijklmn"]]
+        P_t = np.c_[[preds_t[col] for col in "abcdefghijklmn"]]
+        for i, col in enumerate("abcdefghijklmn"):
+            model = LogisticRegression()
+            y = np.array(labels["service_{}".format(col)])
+            model.fit(P, y[train_idx])
+            pre = model.predict_proba(P_t)[:,1]
+            cross_values.append(log_loss(y[test_idx], pre))
+            print(col, cross_values[-1])
+        cvs.append(np.mean(cross_values))
+
                     
-    print("Overall: {}".format(np.mean(list(cvs.values()))))
+    print("Overall: {}".format(np.mean(cvs)))
 
 
     
