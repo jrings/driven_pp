@@ -67,17 +67,11 @@ def main():
     param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
     best = pickle.load(open("best_params_quad.pkl", "rb"))
-    two = pickle.load(open("best_params_stage_two.pkl", "rb"))
 
     all_preds = {}
     for i, col in enumerate("abcdefghijklmn"):
         ((num_round, md, eta), _) = best[col]
         param.update({"max_depth": md, "eta": eta})
-        ((mc, ss, cs), _) = two[col]
-
-        param.update({"min_child_weight": mc, "subsample": ss,
-                      "colsample_bytree": cs})
-
         print("service_{}: {}".format(col, param))
         y = np.array(labels["service_{}".format(col)])
         dtrain = xgb.DMatrix(X, label=y)

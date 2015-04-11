@@ -74,7 +74,7 @@ def main():
     X = np.array(train)
     X_test = np.array(test)
 
-    model = SVC(random_state=1979, verbose=True, probability=True)
+    model = SVC(kernel="linear", random_state=1979, verbose=True, probability=True)
     best = pickle.load(open("best_params.pkl", "rb"))
     all_preds = {}
     cvs = {}
