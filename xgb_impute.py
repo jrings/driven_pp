@@ -8,6 +8,7 @@ from sklearn.cross_validation import cross_val_score, KFold
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.metrics import log_loss
 import xgboost as xgb
+import pickle
 import sys
 
 
@@ -30,17 +31,26 @@ def prepare_data():
             _ = combined.pop(col)
 
     #Expand ordinals and categories and impute missing numerical values
-    dummify_cols = ["release"] + [col for col in combined.columns if col.startswith("_o")
-                                  or col.startswith("c_")]
-
     combined = pd.get_dummies(
-        combined, columns=dummify_cols, dummy_na=True)
-    
+        combined, columns=[col for col in combined.columns if col.startswith("o_")
+                           or col.startswith("c_") or col=="release"], dummy_na=True)
+    cat_X = np.array(combined[[col for col in combined.columns if col.startswith("c") 
+                               or col.startswith("o")]])
+
     for col in combined:
-        if col not in dummify_cols:
+        if col.startswith("n_"):
             combined[col + "_nan"] = [1 if np.isnan(x) else 0 for x in combined[col]]
-            filler = np.nanmean(combined[col])
-            combined[col].fillna(filler, inplace=True)
+            print("Imputing {}".format(col))
+
+            cat_y = np.array(combined[col])
+            not_null = np.array([i for i in range(len(cat_y)) if np.isfinite(y[i])])
+            model = ExtraTreesRegressor(n_estimators=100, random_state=1979, min_samples_split=5, max_features="sqrt")
+            model.fit(cat_X[not_null, :], cat_y[not_null])
+
+            cat_pred = mode.predict(cat_X).ravel()
+
+            combined[col] = [x if np.isfinite(x) else cat_pred[i] for i, x in enumerate(combined[col].tolist())]
+
 
     for col_a, col_b in interactions:
         col_a = col_a.strip()
@@ -52,7 +62,7 @@ def prepare_data():
             print("xxx{}xxx".format(col_b), len(col_b), "not in combined columns")
             continue
         combined["{}_x_{}".format(col_a, col_b)] = [a*b for a, b in zip(combined[col_a], combined[col_b])]
-            
+
     #Split up again
     train = combined.iloc[:len(ids)]
     test = combined.iloc[len(ids):]
@@ -65,36 +75,29 @@ def main():
     
     X = np.array(train)
     X_test = np.array(test)
-
-    param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic', 
+    param = {'max_depth': 2, 'eta': 0.5, 'silent':1, 'objective':'binary:logistic',
              'nthread': 8, 'eval_metric': 'logloss', 'seed': 1979 }
     best = pickle.load(open("best_params_quad.pkl", "rb"))
+
     all_preds = {}
-    cvs = {}
     for i, col in enumerate("abcdefghijklmn"):
         ((num_round, md, eta), _) = best[col]
         param.update({"max_depth": md, "eta": eta})
-        print("service_{}: {} {} rounds".format(col, param, num_round))
+        print("service_{}: {}".format(col, param))
         y = np.array(labels["service_{}".format(col)])
+        dtrain = xgb.DMatrix(X, label=y)
+        dtest = xgb.DMatrix(X_test)
 
-        cross_values = []
-        for train_idx, test_idx in KFold(X.shape[0], shuffle=True, random_state=1979):
-            dtrain = xgb.DMatrix(X[train_idx, :], label=y[train_idx])
-            dtest = xgb.DMatrix(X[test_idx, :])
-            bst = xgb.train(param, dtrain, num_round, [(dtrain, 'train')], early_stopping_rounds=5)
-            try:
-                print(bst.best_iteration, bst.best_score)
-            except Exception as e:
-                print("No early stopping!")
-            preds = bst.predict(dtest)
+        bst = xgb.train(param, dtrain, num_round)
+
+        preds = bst.predict(dtest)
             
-            cross_values.append(log_loss(y[test_idx], preds))
-        cvs[col] = np.mean(cross_values)
-        print("{} finished with {}".format(col, cvs[col]))
-                    
-    print("Overall: {}".format(np.mean(list(cvs.values()))))
+        all_preds[col] = preds
 
-
+    P = pd.DataFrame({"service_{}".format(col): arr for col, arr in all_preds.items()})
+    P["id"] = test_ids
+    P = P[sorted(P.columns)]
+    P.to_csv("submit_xgb_early.csv", index=False)
     
 if __name__ == "__main__":
     main()
