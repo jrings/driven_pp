@@ -2,7 +2,7 @@ import pickle
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression, RandomizedLasso
-from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier
+from sklearn.ensemble import ExtraTreesClassifier, GradientBoostingClassifier, RandomForestClassifier, ExtraTreesRegressor
 from sklearn.grid_search import GridSearchCV
 from sklearn.cross_validation import cross_val_score, KFold
 from sklearn.multiclass import OneVsRestClassifier
@@ -43,13 +43,15 @@ def prepare_data():
             print("Imputing {}".format(col))
 
             cat_y = np.array(combined[col])
-            not_null = np.array([i for i in range(len(cat_y)) if np.isfinite(y[i])])
-            model = ExtraTreesRegressor(n_estimators=100, random_state=1979, min_samples_split=5, max_features="sqrt")
+            not_null = np.array([i for i in range(len(cat_y)) if np.isfinite(cat_y[i])])
+            model = ExtraTreesRegressor(
+                n_estimators=100, random_state=1979, min_samples_split=5, max_features="sqrt")
             model.fit(cat_X[not_null, :], cat_y[not_null])
 
-            cat_pred = mode.predict(cat_X).ravel()
+            cat_pred = model.predict(cat_X).ravel()
 
-            combined[col] = [x if np.isfinite(x) else cat_pred[i] for i, x in enumerate(combined[col].tolist())]
+            combined[col] = [x if np.isfinite(x) else cat_pred[i] 
+                             for i, x in enumerate(combined[col].tolist())]
 
 
     for col_a, col_b in interactions:
