@@ -39,7 +39,7 @@ def prepare_data():
     for col in combined:
         if col not in dummify_cols:
             combined[col + "_nan"] = [1 if np.isnan(x) else 0 for x in combined[col]]
-            filler = np.nanmean(combined[col])
+            filler = np.nanmedian(combined[col])
             combined[col].fillna(filler, inplace=True)
 
     for col_a, col_b in interactions:
